@@ -229,7 +229,7 @@ CosmicRay::CosmicRay(MeshBlock *pmb, ParameterInput *pin):
   max_opacity = pin->GetOrAddReal("cr","max_opacity",1.e10);
   stream_flag = pin->GetOrAddInteger("cr","vs_flag",1);  
   src_flag = pin->GetOrAddInteger("cr","src_flag",1);
-  //start_cr_force_time = pin->GetOrAddReal("cr","start_cr_force_time",0.0);
+  start_cr_force_time = pin->GetOrAddReal("cr","start_cr_force_time",0.0);
   heating_off = pin->GetOrAddInteger("cr","heating_off",0);
   gamma_flag = pin->GetOrAddInteger("cr","gamma_flag",0);
 

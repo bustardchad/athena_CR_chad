@@ -231,8 +231,8 @@ void CRIntegrator::AddSourceTerms(MeshBlock *pmb, const Real dt, AthenaArray<Rea
          if(new_ec < 0.0) new_ec = ec[i];
       
          // JW: comment next 3 lines out to decouple gas from CR pressure gradients
-        // if((pcr->src_flag > 0) && (pmb->pmy_mesh->time > pcr->start_cr_force_time)){ 
-         if(pcr->src_flag > 0){ 
+         if((pcr->src_flag > 0) && (pmb->pmy_mesh->time > pcr->start_cr_force_time)){ 
+        // if(pcr->src_flag > 0){ 
            u(IM1,k,j,i) += (-(newfr1 - fc1[i]) * invlim);
            u(IM2,k,j,i) += (-(newfr2 - fc2[i]) * invlim);
            u(IM3,k,j,i) += (-(newfr3 - fc3[i]) * invlim);

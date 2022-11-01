@@ -73,7 +73,7 @@ public:
   Real influx; // CR flux coming in from INNERX1 boundary if using those BCs (added by JW)
   Real flux_t; // end time for CR flux injection (added by JW)
   Real fluxdt; // ramp-up and -down time for CR flux injection (added by JW)
-  //Real start_cr_force_time; // added by Chad, time where CR forces back-react on the system
+  Real start_cr_force_time; // added by Chad, time where CR forces back-react on the system
 
   MeshBlock* pmy_block;    // ptr to MeshBlock containing this Fluid
   CellCenteredBoundaryVariable cr_bvar;
