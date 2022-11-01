@@ -36,6 +36,24 @@ void Reconstruction::DonorCellX1(const int k, const int j, const int il, const i
   return;
 }
 
+
+void Reconstruction::DonorCellX1(const int k, const int j, const int il, const int iu,
+                                 const AthenaArray<Real> &q, const int array_order,
+                                 AthenaArray<Real> &ql, AthenaArray<Real> &qr) {
+  if(array_order < 0){
+    const int nu = q.GetDim1() - 1;
+
+  // compute L/R states for each variable
+    for (int i=il; i<=iu; ++i) {
+#pragma omp simd
+      for (int n=0; n<=nu; ++n) {
+        ql(i+1,n) =  qr(i,n) = q(k,j,i,n);
+      }
+    }
+
+  }
+  return;
+}
 //----------------------------------------------------------------------------------------
 //! \fn Reconstruction::DonorCellX2()
 //  \brief
@@ -55,6 +73,25 @@ void Reconstruction::DonorCellX2(const int k, const int j, const int il, const i
   return;
 }
 
+void Reconstruction::DonorCellX2(const int k, const int j, const int il, const int iu,
+                                 const AthenaArray<Real> &q, const int array_order,
+                                 AthenaArray<Real> &ql, AthenaArray<Real> &qr) {
+
+  if(array_order < 0){
+    const int nu = q.GetDim1() - 1;
+   // compute L/R states for each variable
+    for (int i=il; i<=iu; ++i) {
+#pragma omp simd
+      for (int n=0; n<=nu; ++n) {
+	    ql(i,n) = qr(i,n) = q(k,j,i,n);
+	  }
+	}
+
+  }
+  return;
+}
+
+
 //----------------------------------------------------------------------------------------
 //! \fn Reconstruction::DonorCellX3()
 //  \brief
@@ -68,6 +105,21 @@ void Reconstruction::DonorCellX3(const int k, const int j, const int il, const i
 #pragma omp simd
     for (int i=il; i<=iu; ++i) {
       ql(n,i) = qr(n,i) = q(n,k,j,i);
+    }
+  }
+  return;
+}
+
+
+void Reconstruction::DonorCellX3(const int k, const int j, const int il, const int iu,
+                                 const AthenaArray<Real> &q, const int array_order,
+                                 AthenaArray<Real> &ql, AthenaArray<Real> &qr) {
+  const int nu = q.GetDim1() - 1;
+  // compute L/R states for each variable
+  for (int i=il; i<=iu; ++i) {
+#pragma omp simd
+    for (int n=0; n<=nu; ++n) {
+      ql(i,n) = qr(i,n) = q(k,j,i,n);
     }
   }
   return;

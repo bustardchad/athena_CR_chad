@@ -99,6 +99,9 @@
 #include "../athena_arrays.hpp"
 #include "../coordinates/coordinates.hpp"
 #include "../field/field.hpp"
+#include "../radiation/radiation.hpp"
+#include "../cr/cr.hpp"
+#include "../thermal_conduction/tc.hpp"
 #include "../gravity/gravity.hpp"
 #include "../hydro/hydro.hpp"
 #include "../mesh/mesh.hpp"
@@ -336,6 +339,9 @@ Outputs::~Outputs() {
 void OutputType::LoadOutputData(MeshBlock *pmb) {
   Hydro *phyd = pmb->phydro;
   Field *pfld = pmb->pfield;
+  Radiation *prad=pmb->prad;
+  CosmicRay *pcr=pmb->pcr;
+  ThermalConduction *ptc=pmb->ptc;
   PassiveScalars *psclr = pmb->pscalars;
   Gravity *pgrav = pmb->pgrav;
   num_vars_ = 0;
@@ -529,6 +535,323 @@ void OutputType::LoadOutputData(MeshBlock *pmb) {
       }
     }
   }
+
+  // The following radiation/cosmic ray/thermal conduction are all 
+  // cell centered variable
+  if(RADIATION_ENABLED){
+    // (lab-frame) radiation energy density
+    if (output_params.variable.compare("Er") == 0 || 
+      output_params.variable.compare("cons") == 0 ||
+      output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Er";
+      pod->data.InitWithShallowSlice(prad->rad_mom,4,IER,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+
+   // comoving frame fram radiation flux vector
+    if (output_params.variable.compare("Fr") == 0 || 
+        output_params.variable.compare("cons") == 0 ||
+        output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "VECTORS";
+      pod->name = "Fr";
+      pod->data.InitWithShallowSlice(prad->rad_mom,4,IFR1,3);
+      AppendOutputDataNode(pod);
+      num_vars_+=3;
+      if(output_params.cartesian_vector) {
+        AthenaArray<Real> src;
+        src.InitWithShallowSlice(prad->rad_mom,4,IFR1,3);
+        pod = new OutputData;
+        pod->type = "VECTORS";
+        pod->name = "Fr_xyz";
+        pod->data.NewAthenaArray(3,prad->rad_mom.GetDim3(),prad->rad_mom.GetDim2(),
+                                    prad->rad_mom.GetDim1());
+        CalculateCartesianVector(src, pod->data, pmb->pcoord);
+        AppendOutputDataNode(pod);
+        num_vars_+=3;
+      }
+    }
+
+
+  // each component of radiation flux
+    if (output_params.variable.compare("Frx") == 0 || 
+        output_params.variable.compare("Fr1") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Fr1";
+      pod->data.InitWithShallowSlice(prad->rad_mom,4,IFR1,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }   
+
+    if (output_params.variable.compare("Fry") == 0 || 
+        output_params.variable.compare("Fr2") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Fr2";
+      pod->data.InitWithShallowSlice(prad->rad_mom,4,IFR2,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    } 
+
+    if (output_params.variable.compare("Frz") == 0 || 
+        output_params.variable.compare("Fr3") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Fr3";
+      pod->data.InitWithShallowSlice(prad->rad_mom,4,IFR3,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+
+    // lab frame radiation pressure
+    if (output_params.variable.compare("Pr") == 0 ||
+          output_params.variable.compare("prim") == 0 ||
+          output_params.variable.compare("cons") == 0) {
+        pod = new OutputData;
+        pod->type = "TENSORS";
+        pod->name = "Pr";
+        pod->data.InitWithShallowSlice(prad->rad_mom,4,IPR11,9);
+        AppendOutputDataNode(pod);
+        num_vars_ += 9;
+      }
+
+
+
+    // (comoving-frame) radiation energy density
+    if (output_params.variable.compare("Er0") == 0 || 
+        output_params.variable.compare("cons") == 0 ||
+        output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Er0";
+      pod->data.InitWithShallowSlice(prad->rad_mom_cm,4,IER,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+      
+
+
+    // comoving frame fram radiation flux vector
+    if (output_params.variable.compare("Fr0") == 0 || 
+        output_params.variable.compare("cons") == 0 ||
+        output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "VECTORS";
+      pod->name = "Fr0";
+      pod->data.InitWithShallowSlice(prad->rad_mom_cm,4,IFR1,3);
+      AppendOutputDataNode(pod);
+      num_vars_+=3;
+      if(output_params.cartesian_vector) {
+        AthenaArray<Real> src;
+        src.InitWithShallowSlice(prad->rad_mom_cm,4,IFR1,3);
+        pod = new OutputData;
+        pod->type = "VECTORS";
+        pod->name = "Fr0_xyz";
+        pod->data.NewAthenaArray(3,prad->rad_mom_cm.GetDim3(),prad->rad_mom_cm.GetDim2(),
+                                    prad->rad_mom_cm.GetDim1());
+        CalculateCartesianVector(src, pod->data, pmb->pcoord);
+        AppendOutputDataNode(pod);
+        num_vars_+=3;
+      }
+    }
+
+    if (output_params.variable.compare("Fr0x") == 0 || 
+        output_params.variable.compare("Fr01") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Fr01";
+      pod->data.InitWithShallowSlice(prad->rad_mom_cm,4,IFR1,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }   
+
+    if (output_params.variable.compare("Fr0y") == 0 || 
+        output_params.variable.compare("Fr02") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Fr02";
+      pod->data.InitWithShallowSlice(prad->rad_mom_cm,4,IFR2,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    } 
+
+    if (output_params.variable.compare("Fr0z") == 0 || 
+        output_params.variable.compare("Fr03") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Fr03";
+      pod->data.InitWithShallowSlice(prad->rad_mom_cm,4,IFR3,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }  
+
+
+  
+    if (output_params.variable.compare("Sigma_s") == 0 ||
+        output_params.variable.compare("prim") == 0 ||
+        output_params.variable.compare("cons") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Sigma_s";
+      pod->data.InitWithShallowSlice(prad->grey_sigma,4,OPAS,1);
+      AppendOutputDataNode(pod);
+      num_vars_ += 1;
+    }
+
+    if (output_params.variable.compare("Sigma_a") == 0 ||
+        output_params.variable.compare("prim") == 0 ||
+        output_params.variable.compare("cons") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Sigma_a";
+      pod->data.InitWithShallowSlice(prad->grey_sigma,4,OPAA,1);
+      AppendOutputDataNode(pod);      
+      num_vars_ += 1;
+    }
+    
+    if (output_params.variable.compare("Sigma_p") == 0 ||
+        output_params.variable.compare("prim") == 0 ||
+        output_params.variable.compare("cons") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Sigma_p";
+      pod->data.InitWithShallowSlice(prad->grey_sigma,4,OPAP,1);
+      AppendOutputDataNode(pod); 
+      num_vars_ += 1;
+    }
+
+  }// End (RADIATION_ENABLED)
+
+
+  if(CR_ENABLED){
+
+    if (output_params.variable.compare("Ec") == 0 || 
+      output_params.variable.compare("cons") == 0 ||
+      output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Ec";
+      pod->data.InitWithShallowSlice(pcr->u_cr,4,CRE,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+
+   // comoving frame fram radiation flux vector
+    if (output_params.variable.compare("Fc") == 0 || 
+        output_params.variable.compare("cons") == 0 ||
+        output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "VECTORS";
+      pod->name = "Fc";
+      pod->data.InitWithShallowSlice(pcr->u_cr,4,CRF1,3);
+      AppendOutputDataNode(pod);
+      num_vars_+=3;
+      if(output_params.cartesian_vector) {
+        AthenaArray<Real> src;
+        src.InitWithShallowSlice(pcr->u_cr,4,CRF1,3);
+        pod = new OutputData;
+        pod->type = "VECTORS";
+        pod->name = "Fr_xyz";
+        pod->data.NewAthenaArray(3,pcr->u_cr.GetDim3(),pcr->u_cr.GetDim2(),
+                                    pcr->u_cr.GetDim1());
+        CalculateCartesianVector(src, pod->data, pmb->pcoord);
+        AppendOutputDataNode(pod);
+        num_vars_+=3;
+      }
+    }
+
+    if (output_params.variable.compare("Sigma_diff") == 0 || 
+        output_params.variable.compare("cons") == 0 ||
+        output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "VECTORS";
+      pod->name = "Sigma_diff";
+      pod->data.InitWithShallowSlice(pcr->sigma_diff,4,0,3);
+      AppendOutputDataNode(pod);
+      num_vars_+=3;
+    }
+
+    if (output_params.variable.compare("Sigma_adv") == 0 || 
+        output_params.variable.compare("cons") == 0 ||
+        output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "VECTORS";
+      pod->name = "Sigma_adv";
+      pod->data.InitWithShallowSlice(pcr->sigma_adv,4,0,3);
+      AppendOutputDataNode(pod);
+      num_vars_+=3;
+    }
+
+    // The streaming velocity
+    if (output_params.variable.compare("Vc") == 0 || 
+        output_params.variable.compare("cons") == 0 ||
+        output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "VECTORS";
+      pod->name = "Vc";
+      pod->data.InitWithShallowSlice(pcr->v_adv,4,0,3);
+      AppendOutputDataNode(pod);
+      num_vars_+=3;
+      if(output_params.cartesian_vector) {
+        AthenaArray<Real> src;
+        src.InitWithShallowSlice(pcr->v_adv,4,0,3);
+        pod = new OutputData;
+        pod->type = "VECTORS";
+        pod->name = "Vc_xyz";
+        pod->data.NewAthenaArray(3,pcr->v_adv.GetDim3(),
+                                   pcr->v_adv.GetDim2(), 
+                                   pcr->v_adv.GetDim1());
+        CalculateCartesianVector(src, pod->data, pmb->pcoord);
+        AppendOutputDataNode(pod);
+        num_vars_+=3;
+      }
+    }
+  }// end Cosmic Rays
+
+
+  if(TC_ENABLED){
+
+    if (output_params.variable.compare("Etc") == 0 || 
+      output_params.variable.compare("cons") == 0 ||
+      output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "SCALARS";
+      pod->name = "Etc";
+      pod->data.InitWithShallowSlice(ptc->u_tc,4,TCE,1);
+      AppendOutputDataNode(pod);
+      num_vars_++;
+    }
+
+   // comoving frame fram radiation flux vector
+    if (output_params.variable.compare("Ftc") == 0 || 
+        output_params.variable.compare("cons") == 0 ||
+        output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "VECTORS";
+      pod->name = "Ftc";
+      pod->data.InitWithShallowSlice(ptc->u_tc,4,TCF1,3);
+      AppendOutputDataNode(pod);
+      num_vars_+=3;
+    }
+
+    if (output_params.variable.compare("Kappa") == 0 || 
+        output_params.variable.compare("cons") == 0 ||
+        output_params.variable.compare("prim") == 0) {
+      pod = new OutputData;
+      pod->type = "VECTORS";
+      pod->name = "Kappa";
+      pod->data.InitWithShallowSlice(ptc->kappa,4,0,3);
+      AppendOutputDataNode(pod);
+      num_vars_+=3;
+    }
+
+  }// end Thermal Conduction
+
+
   // note, the Bcc variables are stored in a separate HDF5 dataset from the above Output
   // nodes, and it must come after those nodes in the linked list
   if (MAGNETIC_FIELDS_ENABLED) {
@@ -610,6 +933,7 @@ void OutputType::LoadOutputData(MeshBlock *pmb) {
       num_vars_++;
     }
   } // endif (MAGNETIC_FIELDS_ENABLED)
+
 
   if (output_params.variable.compare(0, 3, "uov") == 0
       || output_params.variable.compare(0, 12, "user_out_var") == 0) {
@@ -724,6 +1048,22 @@ void OutputType::ClearOutputData() {
 //  \brief scans through singly linked list of OutputTypes and makes any outputs needed.
 
 void Outputs::MakeOutputs(Mesh *pm, ParameterInput *pin, bool wtflag) {
+  // calculate some quantities before output ar a
+
+
+  MeshBlock *pmb;
+  //calculate radiation quantities for dump
+  // Only need to do once for all output type
+  if(RADIATION_ENABLED){
+    pmb=pm->pblock;
+    while(pmb != NULL){
+     // Calculate Com-moving moments and grey opacity for dump
+      pmb->prad->CalculateComMoment();
+      pmb=pmb->next;
+    }
+  }
+
+
   bool first=true;
   OutputType* ptype = pfirst_type_;
   while (ptype != nullptr) {

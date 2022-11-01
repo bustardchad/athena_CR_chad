@@ -25,6 +25,7 @@
 #include "../hydro/hydro.hpp"
 #include "../mesh/mesh.hpp"
 #include "../parameter_input.hpp"
+#include "../radiation/radiation.hpp"
 #include "outputs.hpp"
 
 // Only proceed if HDF5 output enabled
@@ -120,6 +121,7 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag) {
     // face-centered data packed into 1 dataset:
     if (MAGNETIC_FIELDS_ENABLED)
       num_datasets += 1;
+
     num_variables = new int[num_datasets];
 
     // n_dataset = 0: all cell-centered AthenaArray variable data of the same size
@@ -130,6 +132,16 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag) {
     // Graviatational potential:
     if (SELF_GRAVITY_ENABLED)
       num_variables[n_dataset] += 1;
+    
+    if(RADIATION_ENABLED)
+      num_variables[n_dataset] += 20;
+
+    if(CR_ENABLED)
+      num_variables[n_dataset] += 13;
+
+    if(TC_ENABLED)
+      num_variables[n_dataset] += 7;
+     
     // Passive scalars:
     if (NSCALARS > 0)
       num_variables[n_dataset] += NSCALARS;
@@ -180,7 +192,32 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag) {
         std::string vname = pod->name + sn;
         std::strncpy(variable_names[n_variable++], vname.c_str(), max_name_length+1);
       }
-    } else {
+    }else if(pod->type=="TENSORS") {
+      for(int i=1; i<=3; i++) {
+        char sn[3];
+        std::snprintf(sn,sizeof(sn),"%d%d", i,i);
+        std::string vname = pod->name + sn;
+        std::strncpy(variable_names[n_variable++], vname.c_str(), max_name_length+1);
+      }
+      for(int i=2; i<=3; i++) {
+        char sn[3];
+        std::snprintf(sn,sizeof(sn),"%d%d", 1,i);
+        std::string vname = pod->name + sn;
+        std::strncpy(variable_names[n_variable++], vname.c_str(), max_name_length+1);
+      }
+      for(int i=3; i>=1; i-=2) {
+        char sn[3];
+        std::snprintf(sn,sizeof(sn),"%d%d", 2,i);
+        std::string vname = pod->name + sn;
+        std::strncpy(variable_names[n_variable++], vname.c_str(), max_name_length+1);
+      }
+      for(int i=1; i<=2; i++) {
+        char sn[3];
+        std::snprintf(sn,sizeof(sn),"%d%d", 3,i);
+        std::string vname = pod->name + sn;
+        std::strncpy(variable_names[n_variable++], vname.c_str(), max_name_length+1);
+      }
+    }else {
       std::strncpy(variable_names[n_variable++], pod->name.c_str(), max_name_length+1);
     }
     pod = pod->pnext;
@@ -376,6 +413,8 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag) {
           }
           int nv=1;
           if (pod->type == "VECTORS") nv=3;
+          else if(pod->type == "TENSORS") nv=9;
+
           for (int v=0; v < nv; v++, ndv++) {
             int index = 0;
             for (int k = out_ks; k <= out_ke; k++) {
@@ -394,6 +433,7 @@ void ATHDF5Output::WriteOutputFile(Mesh *pm, ParameterInput *pin, bool flag) {
         while (pod != nullptr) {
           int nv=1;
           if (pod->type == "VECTORS") nv=3;
+          else if(pod->type == "TENSORS") nv=9;
           for (int v=0; v < nv; v++, ndv++) {
             int index = 0;
             for (int k = out_ks; k <= out_ke; k++) {

@@ -47,6 +47,9 @@
 #include "../reconstruct/reconstruction.hpp"
 #include "../scalars/scalars.hpp"
 #include "../utils/buffer_utils.hpp"
+#include "../radiation/radiation.hpp"
+#include "../cr/cr.hpp"
+#include "../thermal_conduction/tc.hpp"
 #include "mesh.hpp"
 #include "mesh_refinement.hpp"
 #include "meshblock_tree.hpp"
@@ -88,7 +91,8 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) :
     dt_hyperbolic(dt), dt_parabolic(dt), dt_user(dt),
     cfl_number(pin->GetReal("time", "cfl_number")),
     nlim(pin->GetOrAddInteger("time", "nlim", -1)), ncycle(),
-    ncycle_out(pin->GetOrAddInteger("time", "ncycle_out", 1)),
+   // ncycle_out(pin->GetOrAddInteger("time", "ncycle_out", 1)),
+    ncycle_out(pin->GetOrAddInteger("time", "ncycle_out", 100)),
     dt_diagnostics(pin->GetOrAddInteger("time", "dt_diagnostics", -1)),
     muj(), nuj(), muj_tilde(),
     nbnew(), nbdel(),
@@ -103,7 +107,7 @@ Mesh::Mesh(ParameterInput *pin, int mesh_test) :
     MeshGenerator_{UniformMeshGeneratorX1, UniformMeshGeneratorX2,
                    UniformMeshGeneratorX3},
     BoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
-    AMRFlag_{}, UserSourceTerm_{}, UserTimeStep_{}, ViscosityCoeff_{},
+    AMRFlag_{}, UserSourceTerm_{}, UserSourceTerm2_{}, UserTimeStep_{}, ViscosityCoeff_{},
     ConductionCoeff_{}, FieldDiffusivity_{},
     MGGravityBoundaryFunction_{MGPeriodicInnerX1, MGPeriodicOuterX1, MGPeriodicInnerX2,
                                MGPeriodicOuterX2, MGPeriodicInnerX3, MGPeriodicOuterX3} {
@@ -570,7 +574,7 @@ Mesh::Mesh(ParameterInput *pin, IOWrapper& resfile, int mesh_test) :
     MeshGenerator_{UniformMeshGeneratorX1, UniformMeshGeneratorX2,
                    UniformMeshGeneratorX3},
     BoundaryFunction_{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
-    AMRFlag_{}, UserSourceTerm_{}, UserTimeStep_{}, ViscosityCoeff_{},
+    AMRFlag_{}, UserSourceTerm_{},UserSourceTerm2_{}, UserTimeStep_{}, ViscosityCoeff_{},
     ConductionCoeff_{}, FieldDiffusivity_{},
     MGGravityBoundaryFunction_{MGPeriodicInnerX1, MGPeriodicOuterX1, MGPeriodicInnerX2,
                         MGPeriodicOuterX2, MGPeriodicInnerX3, MGPeriodicOuterX3} {
@@ -1133,6 +1137,61 @@ void Mesh::EnrollUserMGGravityBoundaryFunction(BoundaryFace dir, MGBoundaryFunc 
   return;
 }
 
+
+
+void Mesh::EnrollUserRadBoundaryFunction(BoundaryFace dir, RadBoundaryFunc my_bc) {
+  std::stringstream msg;
+  if (dir < 0 || dir > 5) {
+    msg << "### FATAL ERROR in EnrollUserRadBoundaryCondition function" << std::endl
+        << "dirName = " << dir << " not valid" << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (mesh_bcs[dir] != BoundaryFlag::user) {
+    msg << "### FATAL ERROR in EnrollUserRadBoundaryFunction" << std::endl
+        << "The boundary condition flag must be set to the string 'user' in the "
+        << " <mesh> block in the input file to use user-enrolled BCs" << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  RadBoundaryFunc_[static_cast<int>(dir)]=my_bc;
+  return;
+}
+
+
+void Mesh::EnrollUserCRBoundaryFunction(BoundaryFace dir, CRBoundaryFunc my_bc) {
+  std::stringstream msg;
+  if (dir < 0 || dir > 5) {
+    msg << "### FATAL ERROR in EnrollUserCRBoundaryCondition function" << std::endl
+        << "dirName = " << dir << " not valid" << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (mesh_bcs[dir] != BoundaryFlag::user) {
+    msg << "### FATAL ERROR in EnrollUserCRBoundaryFunction" << std::endl
+        << "The boundary condition flag must be set to the string 'user' in the "
+        << " <mesh> block in the input file to use user-enrolled BCs" << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  CRBoundaryFunc_[static_cast<int>(dir)]=my_bc;
+  return;
+}
+
+void Mesh::EnrollUserTCBoundaryFunction(BoundaryFace dir, TCBoundaryFunc my_bc) {
+  std::stringstream msg;
+  if (dir < 0 || dir > 5) {
+    msg << "### FATAL ERROR in EnrollUserTCBoundaryCondition function" << std::endl
+        << "dirName = " << dir << " not valid" << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  if (mesh_bcs[dir] != BoundaryFlag::user) {
+    msg << "### FATAL ERROR in EnrollUserTCBoundaryFunction" << std::endl
+        << "The boundary condition flag must be set to the string 'user' in the "
+        << " <mesh> block in the input file to use user-enrolled BCs" << std::endl;
+    ATHENA_ERROR(msg);
+  }
+  TCBoundaryFunc_[static_cast<int>(dir)]=my_bc;
+  return;
+}
+
+
 // DEPRECATED(felker): provide trivial overloads for old-style BoundaryFace enum argument
 void Mesh::EnrollUserBoundaryFunction(int dir, BValFunc my_bc) {
   EnrollUserBoundaryFunction(static_cast<BoundaryFace>(dir), my_bc);
@@ -1141,6 +1200,21 @@ void Mesh::EnrollUserBoundaryFunction(int dir, BValFunc my_bc) {
 
 void Mesh::EnrollUserMGGravityBoundaryFunction(int dir, MGBoundaryFunc my_bc) {
   EnrollUserMGGravityBoundaryFunction(static_cast<BoundaryFace>(dir), my_bc);
+  return;
+}
+
+void Mesh::EnrollUserRadBoundaryFunction(int dir, RadBoundaryFunc my_bc) {
+  EnrollUserRadBoundaryFunction(static_cast<BoundaryFace>(dir), my_bc);
+  return;
+}
+
+void Mesh::EnrollUserCRBoundaryFunction(int dir, CRBoundaryFunc my_bc) {
+  EnrollUserCRBoundaryFunction(static_cast<BoundaryFace>(dir), my_bc);
+  return;
+}
+
+void Mesh::EnrollUserTCBoundaryFunction(int dir, TCBoundaryFunc my_bc) {
+  EnrollUserTCBoundaryFunction(static_cast<BoundaryFace>(dir), my_bc);
   return;
 }
 
@@ -1194,6 +1268,11 @@ void Mesh::EnrollUserMeshGenerator(CoordinateDirection dir, MeshGenFunc my_mg) {
 
 void Mesh::EnrollUserExplicitSourceFunction(SrcTermFunc my_func) {
   UserSourceTerm_ = my_func;
+  return;
+}
+
+void Mesh::EnrollUserCRGasSource(CRGasSrcTermFunc my_func) {
+  UserSourceTerm2_ = my_func;
   return;
 }
 
@@ -1395,6 +1474,12 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
         // and (conserved variable) passive scalar masses:
         if (NSCALARS > 0)
           pmb->pscalars->sbvar.SendBoundaryBuffers();
+        if(RADIATION_ENABLED)
+          pmb->prad->rad_bvar.SendBoundaryBuffers();
+        if(CR_ENABLED)
+          pmb->pcr->cr_bvar.SendBoundaryBuffers();
+        if(TC_ENABLED)
+          pmb->ptc->tc_bvar.SendBoundaryBuffers();
       }
 
       // wait to receive conserved variables
@@ -1406,6 +1491,12 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
           pmb->pfield->fbvar.ReceiveAndSetBoundariesWithWait();
         if (NSCALARS > 0)
           pmb->pscalars->sbvar.ReceiveAndSetBoundariesWithWait();
+        if(RADIATION_ENABLED)
+          pmb->prad->rad_bvar.ReceiveAndSetBoundariesWithWait();
+        if(CR_ENABLED)
+          pmb->pcr->cr_bvar.ReceiveAndSetBoundariesWithWait();
+        if(TC_ENABLED)
+          pmb->ptc->tc_bvar.ReceiveAndSetBoundariesWithWait();
         if (SHEARING_BOX) {
           pmb->phydro->hbvar.AddHydroShearForInit();
         }
@@ -1512,6 +1603,36 @@ void Mesh::Initialize(int res_flag, ParameterInput *pin) {
 
         pbval->ApplyPhysicalBoundaries(time, 0.0);
       }
+
+      //for radiation, calculate opacity and moments
+      if(RADIATION_ENABLED){
+        for (int i=0; i<nmb; ++i){
+          pmb = pmb_array[i]; ph = pmb->phydro;
+          Radiation *prad = pmb->prad;
+          prad->CalculateMoment(prad->ir);
+          prad->UpdateOpacity(pmb,ph->w);
+        }
+      }
+ 
+      // calculate opacity
+      if(CR_ENABLED){
+        for(int i=0; i<nmb; ++i){
+          pmb=pmb_array[i]; ph=pmb->phydro;
+          CosmicRay *pcr = pmb->pcr;
+          pf=pmb->pfield;
+          pcr->UpdateOpacity(pmb,pcr->u_cr,ph->w,pf->bcc);
+        }
+      }
+
+      if(TC_ENABLED){
+        for(int i=0; i<nmb; ++i){
+          pmb=pmb_array[i]; ph=pmb->phydro;
+          pf=pmb->pfield;
+          pmb->ptc->UpdateOpacity(pmb,ph->w,pf->bcc);
+
+        }
+      }
+
 
       // Calc initial diffusion coefficients
 #pragma omp for private(pmb,ph,pf)
@@ -1761,6 +1882,12 @@ void Mesh::CorrectMidpointInitialCondition(std::vector<MeshBlock*> &pmb_array, i
     // and (conserved variable) passive scalar masses:
     if (NSCALARS > 0)
       pmb->pscalars->sbvar.SendBoundaryBuffers();
+    if(RADIATION_ENABLED)
+      pmb->prad->rad_bvar.SendBoundaryBuffers();
+    if(CR_ENABLED)
+      pmb->pcr->cr_bvar.SendBoundaryBuffers();
+    if(TC_ENABLED)
+      pmb->ptc->tc_bvar.SendBoundaryBuffers();
   }
 
   // wait to receive conserved variables
@@ -1774,6 +1901,12 @@ void Mesh::CorrectMidpointInitialCondition(std::vector<MeshBlock*> &pmb_array, i
       pmb->pfield->fbvar.ReceiveAndSetBoundariesWithWait();
     if (NSCALARS > 0)
       pmb->pscalars->sbvar.ReceiveAndSetBoundariesWithWait();
+    if(RADIATION_ENABLED)
+      pmb->prad->rad_bvar.ReceiveAndSetBoundariesWithWait();
+    if(CR_ENABLED)
+      pmb->pcr->cr_bvar.ReceiveAndSetBoundariesWithWait();
+    if(TC_ENABLED)
+      pmb->ptc->tc_bvar.ReceiveAndSetBoundariesWithWait();
     if (SHEARING_BOX) {
       pmb->phydro->hbvar.AddHydroShearForInit();
     }
@@ -1822,6 +1955,12 @@ void Mesh::ReserveMeshBlockPhysIDs() {
   if (NSCALARS > 0) {
     ReserveTagPhysIDs(CellCenteredBoundaryVariable::max_phys_id);
   }
+  if(RADIATION_ENABLED)
+    ReserveTagPhysIDs(RadBoundaryVariable::max_phys_id);
+  if(CR_ENABLED)
+    ReserveTagPhysIDs(CellCenteredBoundaryVariable::max_phys_id);
+  if(TC_ENABLED)
+    ReserveTagPhysIDs(CellCenteredBoundaryVariable::max_phys_id);
 #endif
   return;
 }

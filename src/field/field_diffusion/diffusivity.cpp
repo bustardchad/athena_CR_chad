@@ -76,6 +76,59 @@ void ConstDiffusivity(FieldDiffusion *pfdif, MeshBlock *pmb, const AthenaArray<R
   return;
 }
 
+/*
+void SpatialDiffusivity(FieldDiffusion *pfdif, MeshBlock *pmb, const AthenaArray<Real> &w,
+                      const AthenaArray<Real> &bmag,
+                      const int is, const int ie, const int js, const int je,
+                      const int ks, const int ke) {
+  if (pfdif->eta_ohm > 0.0) { // Ohmic resistivity is turned on
+    for (int k=ks; k<=ke; k++) {
+      for (int j=js; j<=je; j++) {
+#pragma omp simd
+        for (int i=is; i<=ie; i++)
+          pfdif->etaB(FieldDiffusion::DiffProcess::ohmic, k,j,i) =
+              pfdif->eta_ohm;
+      }
+    }
+  }
+  if (pfdif->eta_hall != 0.0) { // Hall diffusivity is turned on
+    for (int k=ks; k<=ke; k++) {
+      for (int j=js; j<=je; j++) {
+#pragma omp simd
+        for (int i=is; i<=ie; i++)
+          pfdif->etaB(FieldDiffusion::DiffProcess::hall, k,j,i) =
+              pfdif->eta_hall*bmag(k,j,i)/w(IDN,k,j,i);
+      }
+    }
+  }
+  if (pfdif->eta_ad > 0.0) { // ambipolar diffusivity is turned on
+    Real dens2cgs = 6.85e-27;
+    Real pres2cgs = 6.54e-11;
+    for (int k=ks; k<=ke; k++) {
+      for (int j=js; j<=je; j++) {
+#pragma omp simd
+        for (int i=is; i<=ie; i++)
+          Real dcgs = w(IDN,k,j,i)*dens2cgs;  // density in cgs units
+          Real pcgs = w(IEN,k,j,i)*pres2cgs;  // gas pressure in cgs units
+          Real temp = 1.67e-24*pcgs/(dcgs*1.38e-16);
+          Real tempCutoff = 1.6e4;
+          Real coeff = 3.e3;
+          Real fneutral = 0.5*(1.0 + tanh((-temp + tempCutoff)/(coeff)));
+      // std::cout << "fneutral: " << fneutral << " maxNeut: " << pcr->maxNeut << " tanh term: " << tanh((-temp + tempCutoff)/(coeff)) << "\n";
+          Real fion = 1.0 - fneutral;
+          fion = std::max(fion,1.e-4);
+          Real dampRate = 1.e-9 * fneutral * sqrt(temp / 1000.0) * dcgs/1.e-24;
+          Real collFreq = 2.*dampRate*3.155e13; //2 x damping rate and put into code units
+          pfdif->etaB(FieldDiffusion::DiffProcess::ambipolar, k,j,i) =
+              pfdif->(SQR(bmag(k,j,i))/(fion*collFreq*w(IDN,k,j,i)))*SQR(bmag(k,j,i));
+         // pfdif->etaB(FieldDiffusion::DiffProcess::ambipolar, k,j,i) =
+         //     pfdif->eta_ad*SQR(bmag(k,j,i));
+      }
+    }
+  }
+  return;
+}
+*/
 
 //-------------------------------------------------------------------------------------
 // Calculate current density

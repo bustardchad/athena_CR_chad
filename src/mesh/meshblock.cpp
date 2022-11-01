@@ -31,6 +31,9 @@
 #include "../gravity/gravity.hpp"
 #include "../gravity/mg_gravity.hpp"
 #include "../hydro/hydro.hpp"
+#include "../radiation/radiation.hpp"
+#include "../cr/cr.hpp"
+#include "../thermal_conduction/tc.hpp"
 #include "../parameter_input.hpp"
 #include "../reconstruct/reconstruction.hpp"
 #include "../scalars/scalars.hpp"
@@ -57,11 +60,13 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
 
   ncells1 = block_size.nx1 + 2*NGHOST;
   ncc1 = block_size.nx1/2 + 2*NGHOST;
+  int ndim=1;
   if (pmy_mesh->f2) {
     js = NGHOST;
     je = js + block_size.nx2 - 1;
     ncells2 = block_size.nx2 + 2*NGHOST;
     ncc2 = block_size.nx2/2 + 2*NGHOST;
+    ndim=2;
   } else {
     js = je = 0;
     ncells2 = 1;
@@ -73,6 +78,7 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
     ke = ks + block_size.nx3 - 1;
     ncells3 = block_size.nx3 + 2*NGHOST;
     ncc3 = block_size.nx3/2 + 2*NGHOST;
+    ndim=3;
   } else {
     ks = ke = 0;
     ncells3 = 1;
@@ -118,6 +124,46 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
     pcoord = new GRUser(this, pin, false);
   }
 
+//=================================================================
+//set the total number of frequency x angles
+
+  nfre_ang = 0;
+  if(RADIATION_ENABLED){
+  
+    int nfreq = pin->GetOrAddInteger("radiation","n_frequency",1);
+    int nmu = pin->GetInteger("radiation","nmu");
+    int angle_flag = pin->GetOrAddInteger("radiation","angle_flag",0);
+    int n_ang=1; // number of angles per octant and number of octant
+    int noct=2;
+    // calculate total number of angles based on dimensions
+    if(ndim == 1){
+      n_ang = nmu;
+      noct = 2;
+    }else if(ndim == 2){
+      noct = 4;
+      if(angle_flag == 0){
+        n_ang = nmu * (nmu + 1)/2;
+      }else if(angle_flag == 10){
+        n_ang = nmu;
+      }
+    }else if(ndim == 3){
+      noct = 8;
+      if(angle_flag == 0){
+        n_ang = nmu * (nmu + 1)/2;
+      }else if(angle_flag == 10){
+        n_ang = nmu * nmu/2;
+      }
+    }// end 3D
+  
+    nfre_ang = n_ang * noct * nfreq;
+
+  }
+  //========================================================
+  // the reconstruction constructor needs nfre_ang
+  // radiation object must be created first
+
+  //========================================================
+
   // Reconstruction: constructor may implicitly depend on Coordinates, and PPM variable
   // floors depend on EOS, but EOS isn't needed in Reconstruction constructor-> this is ok
   precon = new Reconstruction(this, pin);
@@ -150,6 +196,8 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
     pfield = new Field(this, pin);
     pbval->AdvanceCounterPhysID(FaceCenteredBoundaryVariable::max_phys_id);
   }
+
+
   if (SELF_GRAVITY_ENABLED) {
     // if (this->grav_block)
     pgrav = new Gravity(this, pin);
@@ -172,6 +220,25 @@ MeshBlock::MeshBlock(int igid, int ilid, LogicalLocation iloc, RegionSize input_
 
   peos = new EquationOfState(this, pin);
 
+  if(RADIATION_ENABLED){
+       //radiation constructor needs the parameter nfre_ang 
+    prad = new Radiation(this, pin);
+    pbval->AdvanceCounterPhysID(RadBoundaryVariable::max_phys_id);
+  }
+
+  if(CR_ENABLED){
+    pcr = new CosmicRay(this, pin);
+    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+  }
+
+  if(TC_ENABLED){
+    ptc = new ThermalConduction(this, pin);
+    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+  }
+
+
+  //=================================================================
+  
   // Create user mesh data
   InitUserMeshBlockData(pin);
 
@@ -196,11 +263,13 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
 
   ncells1 = block_size.nx1 + 2*NGHOST;
   ncc1 = block_size.nx1/2 + 2*NGHOST;
+  int ndim = 1;
   if (pmy_mesh->f2) {
     js = NGHOST;
     je = js + block_size.nx2 - 1;
     ncells2 = block_size.nx2 + 2*NGHOST;
     ncc2 = block_size.nx2/2 + 2*NGHOST;
+    ndim = 2;
   } else {
     js = je = 0;
     ncells2 = 1;
@@ -212,6 +281,7 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     ke = ks + block_size.nx3 - 1;
     ncells3 = block_size.nx3 + 2*NGHOST;
     ncc3 = block_size.nx3/2 + 2*NGHOST;
+    ndim = 3;
   } else {
     ks = ke = 0;
     ncells3 = 1;
@@ -250,6 +320,44 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     pcoord = new GRUser(this, pin, false);
   }
 
+//========================================================================
+  // radiation constructor needs to be done before reconstruction
+
+  nfre_ang = 0;
+   
+  if(RADIATION_ENABLED){
+
+    int nfreq = pin->GetOrAddInteger("radiation","n_frequency",1);
+    int nmu = pin->GetInteger("radiation","nmu");
+    int angle_flag = pin->GetOrAddInteger("radiation","angle_flag",0);
+    int n_ang=1; // number of angles per octant and number of octant
+    int noct=2;
+
+    // calculate total number of angles based on dimensions
+    if(ndim == 1){
+      n_ang = nmu;
+      noct = 2;
+    }else if(ndim == 2){
+      noct = 4;
+      if(angle_flag == 0){
+        n_ang = nmu * (nmu + 1)/2;
+      }else if(angle_flag == 10){
+        n_ang = nmu;
+      }
+    }else if(ndim == 3){
+      noct = 8;
+      if(angle_flag == 0){
+        n_ang = nmu * (nmu + 1)/2;
+      }else if(angle_flag == 10){
+        n_ang = nmu * nmu/2;
+      }
+    }// end 3D
+  
+    nfre_ang = n_ang * noct * nfreq;
+
+  }
+  
+
   // Reconstruction (constructor may implicitly depend on Coordinates)
   precon = new Reconstruction(this, pin);
 
@@ -287,6 +395,22 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
 
   peos = new EquationOfState(this, pin);
 
+  if(RADIATION_ENABLED){
+       //radiation constructor needs the parameter nfre_ang 
+    prad = new Radiation(this, pin);
+    pbval->AdvanceCounterPhysID(RadBoundaryVariable::max_phys_id);
+  }
+
+  if(CR_ENABLED){
+    pcr = new CosmicRay(this, pin);
+    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+  }
+
+  if(TC_ENABLED){
+    ptc = new ThermalConduction(this, pin);
+    pbval->AdvanceCounterPhysID(CellCenteredBoundaryVariable::max_phys_id);
+  }
+
   InitUserMeshBlockData(pin);
 
   std::size_t os = 0;
@@ -315,6 +439,26 @@ MeshBlock::MeshBlock(int igid, int ilid, Mesh *pm, ParameterInput *pin,
     os += pfield->b.x3f.GetSizeInBytes();
   }
 
+  if(RADIATION_ENABLED){
+    std::memcpy(prad->ir.data(), &(mbdata[os]), prad->ir.GetSizeInBytes());
+    std::memcpy(prad->ir1.data(), &(mbdata[os]), prad->ir1.GetSizeInBytes());
+    os += prad->ir.GetSizeInBytes();
+  }
+
+  if(CR_ENABLED){
+    std::memcpy(pcr->u_cr.data(), &(mbdata[os]), pcr->u_cr.GetSizeInBytes());
+    std::memcpy(pcr->u_cr1.data(), &(mbdata[os]), pcr->u_cr1.GetSizeInBytes());
+    os += pcr->u_cr.GetSizeInBytes();   
+  }
+
+  if(TC_ENABLED){
+    std::memcpy(ptc->u_tc.data(), &(mbdata[os]), ptc->u_tc.GetSizeInBytes());
+    std::memcpy(ptc->u_tc1.data(), &(mbdata[os]), ptc->u_tc1.GetSizeInBytes());
+    os += ptc->u_tc.GetSizeInBytes();      
+  }
+
+  
+  //=============================================
   // (conserved variable) Passive scalars:
   if (NSCALARS > 0) {
     std::memcpy(pscalars->s.data(), &(mbdata[os]), pscalars->s.GetSizeInBytes());
@@ -354,6 +498,9 @@ MeshBlock::~MeshBlock() {
   delete peos;
   if (SELF_GRAVITY_ENABLED) delete pgrav;
   if (NSCALARS > 0) delete pscalars;
+  if(RADIATION_ENABLED) delete prad;
+  if(CR_ENABLED) delete pcr;
+  if(TC_ENABLED) delete ptc;
 
   // BoundaryValues should be destructed AFTER all BoundaryVariable objects are destroyed
   delete pbval;
@@ -454,6 +601,12 @@ std::size_t MeshBlock::GetBlockSizeInBytes() {
     size += pgrav->phi.GetSizeInBytes();
   if (NSCALARS > 0)
     size += pscalars->s.GetSizeInBytes();
+  if (RADIATION_ENABLED)
+    size += prad->ir.GetSizeInBytes();
+  if(CR_ENABLED)
+    size += pcr->u_cr.GetSizeInBytes();
+  if(TC_ENABLED)
+    size += ptc->u_tc.GetSizeInBytes();
 
   // calculate user MeshBlock data size
   for (int n=0; n<nint_user_meshblock_data_; n++)

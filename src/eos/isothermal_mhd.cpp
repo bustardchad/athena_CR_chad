@@ -10,6 +10,7 @@
 
 // C++ headers
 #include <cmath>   // sqrt()
+#include <iostream>   // endl
 
 // Athena++ headers
 #include "../athena.hpp"
@@ -23,11 +24,16 @@
 
 // EquationOfState constructor
 
+using namespace std;  // Chad
+
 EquationOfState::EquationOfState(MeshBlock *pmb, ParameterInput *pin) :
     pmy_block_(pmb),
     iso_sound_speed_{pin->GetReal("hydro", "iso_sound_speed")},  // error if missing!
-    density_floor_{pin->GetOrAddReal("hydro", "dfloor", std::sqrt(1024*float_min) )} {}
-
+    density_floor_{pin->GetOrAddReal("hydro", "dfloor", std::sqrt(1024*float_min) )} {
+    //std::cout <<  "### cs in eos file: " << iso_sound_speed_ << std::endl;
+    //ATHENA_ERROR(msg);
+    }
+//std::cout << iso_sound_speed_;
 //----------------------------------------------------------------------------------------
 // \!fn void EquationOfState::ConservedToPrimitive(AthenaArray<Real> &cons,
 //    const AthenaArray<Real> &prim_old, const FaceField &b,

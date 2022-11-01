@@ -42,6 +42,9 @@ struct TaskStates;
 class Coordinates;
 class Reconstruction;
 class Hydro;
+class Radiation;
+class CosmicRay;
+class ThermalConduction;
 class Field;
 class PassiveScalars;
 class Gravity;
@@ -63,6 +66,7 @@ class MeshBlock {
   friend class BoundaryValues;
   friend class CellCenteredBoundaryVariable;
   friend class FaceCenteredBoundaryVariable;
+  friend class RadBoundaryVariable;
   friend class Mesh;
   friend class Hydro;
   friend class TaskList;
@@ -88,6 +92,7 @@ class MeshBlock {
   int ncells1, ncells2, ncells3;
   // on 1x coarser level MeshBlock (i.e. ncc2=nx2/2 + 2*NGHOST, if nx2>1)
   int ncc1, ncc2, ncc3;
+  int nfre_ang; //total number of frequency x total number of angles
   int is, ie, js, je, ks, ke;
   int gid, lid;
   int cis, cie, cjs, cje, cks, cke, cnghost;
@@ -115,6 +120,9 @@ class MeshBlock {
 
   // physics-related objects (possibly containing their derived bvals classes)
   Hydro *phydro;
+  Radiation *prad;
+  CosmicRay *pcr;
+  ThermalConduction *ptc;
   Field *pfield;
   Gravity *pgrav;
   MGGravity* pmg;
@@ -130,6 +138,8 @@ class MeshBlock {
   void SearchAndSetNeighbors(MeshBlockTree &tree, int *ranklist, int *nslist);
   void WeightedAve(AthenaArray<Real> &u_out, AthenaArray<Real> &u_in1,
                    AthenaArray<Real> &u_in2, const Real wght[3]);
+  void WeightedAve(AthenaArray<Real> &u_out, AthenaArray<Real> &u_in1,
+                   AthenaArray<Real> &u_in2, const Real wght[3], int flag);
   void WeightedAve(FaceField &b_out, FaceField &b_in1, FaceField &b_in2,
                    const Real wght[3]);
 
@@ -185,11 +195,15 @@ class Mesh {
   friend class BoundaryValues;
   friend class CellCenteredBoundaryVariable;
   friend class FaceCenteredBoundaryVariable;
+  friend class RadBoundaryVariable;
   friend class MGBoundaryValues;
   friend class Coordinates;
   friend class MeshRefinement;
   friend class HydroSourceTerms;
   friend class Hydro;
+  friend class Radiation;
+  friend class CosmicRay;
+  friend class ThermalConduction;
   friend class FFTDriver;
   friend class FFTGravityDriver;
   friend class TurbulenceDriver;
@@ -301,8 +315,12 @@ class Mesh {
   // functions
   MeshGenFunc MeshGenerator_[3];
   BValFunc BoundaryFunction_[6];
+  RadBoundaryFunc RadBoundaryFunc_[6];
+  CRBoundaryFunc CRBoundaryFunc_[6];
+  TCBoundaryFunc TCBoundaryFunc_[6];
   AMRFlagFunc AMRFlag_;
   SrcTermFunc UserSourceTerm_;
+  CRGasSrcTermFunc UserSourceTerm2_;
   TimeStepFunc UserTimeStep_;
   HistoryOutputFunc *user_history_func_;
   MetricFunc UserMetric_;
@@ -347,13 +365,21 @@ class Mesh {
   // often used (not defined) in prob file in ../pgen/
   void EnrollUserBoundaryFunction(BoundaryFace face, BValFunc my_func);
   void EnrollUserMGGravityBoundaryFunction(BoundaryFace dir, MGBoundaryFunc my_bc);
+  void EnrollUserRadBoundaryFunction(BoundaryFace face, RadBoundaryFunc my_func);
+  void EnrollUserCRBoundaryFunction(BoundaryFace face, CRBoundaryFunc my_func);
+  void EnrollUserTCBoundaryFunction(BoundaryFace face, TCBoundaryFunc my_func);
+
   // DEPRECATED(felker): provide trivial overload for old-style BoundaryFace enum argument
   void EnrollUserBoundaryFunction(int face, BValFunc my_func);
   void EnrollUserMGGravityBoundaryFunction(int dir, MGBoundaryFunc my_bc);
+  void EnrollUserRadBoundaryFunction(int face, RadBoundaryFunc my_func);
+  void EnrollUserCRBoundaryFunction(int face, CRBoundaryFunc my_func);
+  void EnrollUserTCBoundaryFunction(int face, TCBoundaryFunc my_func);
 
   void EnrollUserRefinementCondition(AMRFlagFunc amrflag);
   void EnrollUserMeshGenerator(CoordinateDirection dir, MeshGenFunc my_mg);
   void EnrollUserExplicitSourceFunction(SrcTermFunc my_func);
+  void EnrollUserCRGasSource(CRGasSrcTermFunc my_func);
   void EnrollUserTimeStepFunction(TimeStepFunc my_func);
   void AllocateUserHistoryOutput(int n);
   void EnrollUserHistoryOutput(int i, HistoryOutputFunc my_func, const char *name,
@@ -367,7 +393,6 @@ class Mesh {
   void SetGravityThreshold(Real eps) { grav_eps_=eps; }
   void SetMeanDensity(Real d0) { grav_mean_rho_=d0; }
 };
-
 
 //----------------------------------------------------------------------------------------
 // \!fn Real ComputeMeshGeneratorX(std::int64_t index, std::int64_t nrange,

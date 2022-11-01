@@ -46,6 +46,9 @@ TurbulenceDriver::TurbulenceDriver(Mesh *pm, ParameterInput *pin) :
     f_shear(pin->GetOrAddReal("problem", "f_shear", -1)), // ratio of shear component
     expo(pin->GetOrAddReal("problem", "expo", 2)), // power-law exponent
     dedt(pin->GetReal("problem", "dedt")), // turbulence amplitude
+    parabolic(pin->GetOrAddReal("problem", "parabolic",0)), // inverse parabolic driving?
+    window1(pin->GetOrAddReal("problem", "window1",0.625)), // lower z value for driving window?
+    window2(pin->GetOrAddReal("problem", "window2",1.250)), // upper z value for driving window?
     // TODO(changgoo): this assumes 3D and should not work with 1D, 2D. Add check.
     vel{ {nmb, pm->pblock->ncells3, pm->pblock->ncells2, pm->pblock->ncells1},
          {nmb, pm->pblock->ncells3, pm->pblock->ncells2, pm->pblock->ncells1},
@@ -246,7 +249,8 @@ void TurbulenceDriver::PowerSpectrum(std::complex<Real> *amp) {
       }
     }
   }
-
+  
+  
   // set power spectrum: only power-law
   for (int k=0; k<knx3; k++) {
     for (int j=0; j<knx2; j++) {
@@ -264,9 +268,12 @@ void TurbulenceDriver::PowerSpectrum(std::complex<Real> *amp) {
 
         if (gidx == 0) {
           pcoeff = 0.0;
-        } else {
+        } else { // changed by Chad, December 16, 2020 -- parabolic function
           if ((nmag > nlow) && (nmag < nhigh)) {
             pcoeff = 1.0/std::pow(kmag,(expo+2.0)/2.0);
+            if (parabolic > 0) {
+              pcoeff = 1. - std::pow((nmag - ((nhigh+nlow)/2.)),(expo+2.0)/2.0);
+            }
           } else {
             pcoeff = 0.0;
           }
@@ -409,13 +416,30 @@ void TurbulenceDriver::Perturb(Real dt) {
             M2 = pmb->phydro->u(IM2,k,j,i);
             M3 = pmb->phydro->u(IM3,k,j,i);
 
-            if (NON_BAROTROPIC_EOS) {
-              pmb->phydro->u(IEN,k,j,i) += s*(M1*v1 + M2*v2+M3*v3)
-                                           + 0.5*s*s*den*(SQR(v1) + SQR(v2) + SQR(v3));
+            // window function added by Chad, Aug 2021
+            Real wfunc = 1.0;
+            Real zcoord = pmb->pcoord->x3v(k);
+            Real falloff = (window2-window1)/5.0;
+            if ((zcoord < window2) && (zcoord > window1)) {
+              wfunc = 1.0;
+            } else if (zcoord > window2) {
+              wfunc = exp(-std::abs(zcoord-window2)/falloff); 
+             // std::cout << "zcoord: " << zcoord << " falloff: " << falloff << " wfunc: " << wfunc << std::endl;
+            } else { // (zcoord < window1)
+              wfunc = exp(-std::abs(zcoord-window1)/falloff);
             }
-            pmb->phydro->u(IM1,k,j,i) += s*den*v1;
-            pmb->phydro->u(IM2,k,j,i) += s*den*v2;
-            pmb->phydro->u(IM3,k,j,i) += s*den*v3;
+            Real sprime = s*wfunc;  // turn off if you want driving throughout the whole box
+            
+
+            if (NON_BAROTROPIC_EOS) {
+             // pmb->phydro->u(IEN,k,j,i) += s*(M1*v1 + M2*v2+M3*v3)
+             //                              + 0.5*s*s*den*(SQR(v1) + SQR(v2) + SQR(v3));
+              pmb->phydro->u(IEN,k,j,i) += sprime*(M1*v1 + M2*v2+M3*v3)
+                                           + 0.5*sprime*sprime*den*(SQR(v1) + SQR(v2) + SQR(v3));
+            }
+            pmb->phydro->u(IM1,k,j,i) += sprime*den*v1;
+            pmb->phydro->u(IM2,k,j,i) += sprime*den*v2;
+            pmb->phydro->u(IM3,k,j,i) += sprime*den*v3;
           }
         }
       }
