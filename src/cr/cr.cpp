@@ -229,8 +229,6 @@ CosmicRay::CosmicRay(MeshBlock *pmb, ParameterInput *pin):
   max_opacity = pin->GetOrAddReal("cr","max_opacity",1.e10);
   stream_flag = pin->GetOrAddInteger("cr","vs_flag",1);  
   src_flag = pin->GetOrAddInteger("cr","src_flag",1);
-  start_cr_force_time = pin->GetOrAddReal("cr","start_cr_force_time",0.0);
-  heating_off = pin->GetOrAddInteger("cr","heating_off",0);
   gamma_flag = pin->GetOrAddInteger("cr","gamma_flag",0);
 
   influx = pin->GetOrAddReal("problem","influx",0.);   // added by JW 
@@ -242,6 +240,9 @@ CosmicRay::CosmicRay(MeshBlock *pmb, ParameterInput *pin):
   max_ion_va = pin->GetOrAddReal("cr","max_ion_va",1.0);   // added by Chad
   diffInput = pin->GetOrAddReal("cr","diffInput",1.E-30);   // added by Chad
   max_in_diff = pin->GetOrAddReal("cr","max_in_diff",1.0);   // added by Chad
+  start_cr_force_time = pin->GetOrAddReal("cr","start_cr_force_time",0.0);
+  heating_off = pin->GetOrAddInteger("cr","heating_off",0);
+
   
   ion_neutral_friction = pin->GetOrAddInteger("cr","ion_neutral_friction",0);   // added by Chad
   ion_alfven_speed = pin->GetOrAddInteger("cr","ion_alfven_speed",0);   // added by Chad
