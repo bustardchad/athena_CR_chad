@@ -3,26 +3,28 @@
 
 # Files for conditional compilation
 
-PROBLEM_FILE = @PROBLEM_FILE@
-COORDINATES_FILE = @COORDINATES_FILE@
-EOS_FILE = @EOS_FILE@
-GENERAL_EOS_FILE = @GENERAL_EOS_FILE@
-RSOLVER_FILE = @RSOLVER_FILE@
-RSOLVER_DIR = @RSOLVER_DIR@
-MPIFFT_FILE = @MPIFFT_FILE@
+#PROBLEM_FILE = coolpulse_Chad_gammaRays.cpp
+PROBLEM_FILE = shock_clumps.cpp
+COORDINATES_FILE = cartesian.cpp
+EOS_FILE = adiabatic_mhd.cpp
+GENERAL_EOS_FILE = noop.cpp
+RSOLVER_FILE = hlld.cpp
+RSOLVER_DIR = mhd/
+MPIFFT_FILE =  
 
 # General compiler specifications
 
-CXX := @COMPILER_COMMAND@
-CPPFLAGS := @PREPROCESSOR_FLAGS@
-CXXFLAGS := @COMPILER_FLAGS@
-LDFLAGS := @LINKER_FLAGS@
-LDLIBS := @LIBRARY_FLAGS@
-GCOV_CMD := @GCOV_COMMAND@
+CXX := mpicxx
+CPPFLAGS :=  -I/opt/apps/intel18/impi18_0/phdf5/1.10.4/x86_64/include
+CXXFLAGS := -O3 -std=c++11
+LDFLAGS :=  -L/opt/apps/intel18/impi18_0/phdf5/1.10.4/x86_64/lib
+LDLIBS :=  -lhdf5
+GCOV_CMD := gcov
 
 # Preliminary definitions
 
-EXE_DIR := bin/
+EXE_DIR := bin_shock_clumps/
+#EXE_DIR := bin_coolpulse_gammaRays/
 EXECUTABLE := $(EXE_DIR)athena
 SRC_FILES := $(wildcard src/*.cpp) \
 	     $(wildcard src/bvals/*.cpp) \
@@ -64,7 +66,8 @@ SRC_FILES := $(wildcard src/*.cpp) \
 	     $(wildcard src/task_list/*.cpp) \
 	     $(wildcard src/utils/*.cpp) \
 	     $(MPIFFT_FILE)
-OBJ_DIR := obj/
+OBJ_DIR := obj_shock_clumps/
+#OBJ_DIR := obj_coolpulse_gammaRays/
 OBJ_FILES := $(addprefix $(OBJ_DIR),$(notdir $(SRC_FILES:.cpp=.o)))
 GCOV_FILES := $(notdir $(addsuffix .gcov,$(SRC_FILES)))
 GCDA_FILES := $(wildcard $(OBJ_DIR)/*.gcda)

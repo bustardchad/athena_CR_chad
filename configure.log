@@ -1,0 +1,28 @@
+Your Athena++ distribution has now been configured with the following options:
+  Problem generator:          CR_turb_cooling
+  Coordinate system:          cartesian
+  Equation of state:          adiabatic
+  Riemann solver:             hlld
+  Magnetic fields:            ON
+  Number of scalars:          0
+  Special relativity:         OFF
+  General relativity:         OFF
+  Radiative Transfer:         OFF
+  Cosmic Ray Transport:       ON
+  Thermal Conduction:         OFF
+  Frame transformations:      OFF
+  Self-Gravity:               OFF
+  Super-Time-Stepping:        OFF
+  Shearing Box BCs:           OFF
+  Debug flags:                OFF
+  Code coverage flags:        OFF
+  Linker flags:                -L/opt/apps/intel18/impi18_0/phdf5/1.10.4/x86_64/lib  -lfftw3
+  Floating-point precision:   double
+  Number of ghost cells:      2
+  MPI parallelism:            ON
+  OpenMP parallelism:         OFF
+  FFT:                        ON
+  HDF5 output:                ON
+  HDF5 precision:             double
+  Compiler:                   icpc-icx
+  Compilation command:        icpc  -O3 -std=c++11 -ipo -xCORE-AVX2 -axCORE-AVX512,MIC-AVX512 -inline-forceinline -qopenmp-simd -qopt-prefetch=4 -qoverride-limits -I/opt/apps/intel18/impi18_0/phdf5/1.10.4/x86_64/include

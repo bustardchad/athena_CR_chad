@@ -1,0 +1,105 @@
+<comment>
+problem   = 1D interface
+reference = 
+configure = --prob=CRFront
+
+<job>
+problem_id = cr         # problem ID: basename of output filenames
+
+<output1>
+file_type  = hdf5       # Binary data dump
+dt         = 0.000001         # time increment between outputs
+variable   = prim
+
+<output2>
+file_type  = hdf5       # Binary data dump
+dt         = 0.000001         # time increment between outputs
+variable   = uov
+
+<output3>
+file_type  = hst       # Binary data dump
+dt         = 0.01     # time increment between outputs
+
+
+<output4>
+file_type  = rst       # Binary data dump
+dt         = 1.0      # time increment between outputs
+
+
+<time>
+cfl_number = 0.6        # The Courant, Friedrichs, & Lewy (CFL) Number
+nlim       = 30         # cycle limit
+tlim       = 1.E2      # time limit
+#tlim       = 120.0      # time limit
+#ncycle_out = 1000
+
+<mesh>
+nx1        = 64       # Number of zones in X1-direction
+x1min      = 0.0        # minimum value of X1
+x1max      = 0.4   # maximum value of X1
+ix1_bc     = user       # inner-X1 boundary flag
+ox1_bc     = user       # outer-X1 boundary flag
+
+
+nx2        = 1        # Number of zones in X2-direction
+x2min      = -0.1      # minimum value of X2
+x2max      = 0.1       # maximum value of X2
+ix2_bc     = periodic    # inner-X2 boundary flag
+ox2_bc     = periodic    # outer-X2 boundary flag
+
+
+nx3        = 1          # Number of zones in X3-direction
+x3min      = -0.5       # minimum value of X3
+x3max      = 0.5        # maximum value of X3
+ix3_bc     = periodic   # inner-X3 boundary flag
+ox3_bc     = periodic   # outer-X3 boundary flag
+
+
+#refinement = static
+
+<meshblock>
+nx1         = 4
+nx2         = 1
+nx3         = 1
+
+#<refinement1>
+#x1min       = 0.5
+#x1max       = 1.953125
+#x2min       = -0.25 
+#x2max       = 0.25
+#x3min       = -0.5
+#x3max       = 0.5
+#level       = 2
+
+<hydro>
+gamma        = 1.6666666666667       # gamma = C_p/C_v
+dfloor       = 1.e-8
+pfloor       = 1.e-7
+
+
+<cr>
+vmax                	= 100
+vs_flag        	    	= 1    # turns off streaming
+src_flag            	= 1 # decouples cosmic rays from gas
+gamma_flag          	= -1
+ion_neutral_friction    = -1
+ion_alfven_speed    	= -1
+maxNeut         	= 0.9999
+max_ion_va      	= 1
+max_in_diff     	= 1
+
+# this next line doesn't work
+sigmaInput  = 10.0  # diffusion ?
+
+diffInput   = 1.E-10
+
+
+
+<problem>
+pgascold        = 2.11E-3       # .00494 in these units should correspond to 3.23e-13 dyne/cm^2 (same as used in ZEUS x1 runs)
+xcrcold		= 10.0
+hgamma		= 1.E-26
+narr_len	= 1.E5
+#bx           	= .1047   # 3 muG
+bx           	= .3141   # 9 muG
+xmax		= 0.4 # should be equal to x1max

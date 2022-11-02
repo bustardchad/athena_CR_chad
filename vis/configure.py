@@ -244,7 +244,6 @@ cxx_choices = [
     'icpc',
     'icpc-debug',
     'icpc-phi',
-    'icpc-icx',
     'cray',
     'bgxlc++',
     'clang++',
@@ -547,18 +546,6 @@ if args['cxx'] == 'icpc-phi':
     makefile_options['PREPROCESSOR_FLAGS'] = ''
     makefile_options['COMPILER_FLAGS'] = (
       '-O3 -std=c++11 -ipo -xMIC-AVX512 -inline-forceinline -qopenmp-simd '
-      '-qopt-prefetch=4 -qoverride-limits'
-    )
-    makefile_options['LINKER_FLAGS'] = ''
-    makefile_options['LIBRARY_FLAGS'] = ''
-if args['cxx'] == 'icpc-icx':
-    # Cross-compile for Intel Xeon Phi x200 KNL series (unique AVX-512ER and AVX-512FP)
-    # -xMIC-AVX512: generate AVX-512F, AVX-512CD, AVX-512ER and AVX-512FP
-    definitions['COMPILER_CHOICE'] = 'icpc'
-    definitions['COMPILER_COMMAND'] = makefile_options['COMPILER_COMMAND'] = 'icpc'
-    makefile_options['PREPROCESSOR_FLAGS'] = ''
-    makefile_options['COMPILER_FLAGS'] = (
-      '-O3 -std=c++11 -ipo -xCORE-AVX2 -axCORE-AVX512,MIC-AVX512 -inline-forceinline -qopenmp-simd '
       '-qopt-prefetch=4 -qoverride-limits'
     )
     makefile_options['LINKER_FLAGS'] = ''

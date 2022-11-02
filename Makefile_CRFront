@@ -3,26 +3,34 @@
 
 # Files for conditional compilation
 
-PROBLEM_FILE = @PROBLEM_FILE@
-COORDINATES_FILE = @COORDINATES_FILE@
-EOS_FILE = @EOS_FILE@
-GENERAL_EOS_FILE = @GENERAL_EOS_FILE@
-RSOLVER_FILE = @RSOLVER_FILE@
-RSOLVER_DIR = @RSOLVER_DIR@
-MPIFFT_FILE = @MPIFFT_FILE@
+#PROBLEM_FILE = cloud3D_noCooling_absorbingBC.cpp
+#PROBLEM_FILE = multipleClouds_forMontu.cpp
+#PROBLEM_FILE = CRFront.cpp
+PROBLEM_FILE = CR_turb_stratified_isothermal.cpp
+#PROBLEM_FILE = lognormal_tapered_3D_piso.cpp
+COORDINATES_FILE = cartesian.cpp
+EOS_FILE = adiabatic_mhd.cpp
+GENERAL_EOS_FILE = noop.cpp
+RSOLVER_FILE = hlld.cpp
+RSOLVER_DIR = mhd/
+MPIFFT_FILE =  
 
 # General compiler specifications
 
-CXX := @COMPILER_COMMAND@
-CPPFLAGS := @PREPROCESSOR_FLAGS@
-CXXFLAGS := @COMPILER_FLAGS@
-LDFLAGS := @LINKER_FLAGS@
-LDLIBS := @LIBRARY_FLAGS@
-GCOV_CMD := @GCOV_COMMAND@
+CXX := mpicxx
+CPPFLAGS := 
+CXXFLAGS := -O3 -std=c++11 -xMIC-AVX512 -inline-forceinline -qopenmp-simd -qopt-prefetch=4 -qoverride-limits -diag-disable 3180 -I/opt/apps/intel18/impi18_0/phdf5/1.8.16/x86_64/include
+LDFLAGS :=  -L/opt/apps/intel18/impi18_0/phdf5/1.8.16/x86_64/lib
+LDLIBS :=  -lhdf5
+GCOV_CMD := gcov
 
 # Preliminary definitions
 
-EXE_DIR := bin/
+#EXE_DIR := bin_cloud3D_noCooling_absorbingBC/
+#EXE_DIR := bin_multipleClouds_forMontu/
+#EXE_DIR := bin_CRFront/
+EXE_DIR := bin_CR_turb_stratified_isothermal/
+#EXE_DIR := bin_lognormal_tapered_3D_piso/
 EXECUTABLE := $(EXE_DIR)athena
 SRC_FILES := $(wildcard src/*.cpp) \
 	     $(wildcard src/bvals/*.cpp) \
@@ -64,7 +72,11 @@ SRC_FILES := $(wildcard src/*.cpp) \
 	     $(wildcard src/task_list/*.cpp) \
 	     $(wildcard src/utils/*.cpp) \
 	     $(MPIFFT_FILE)
-OBJ_DIR := obj/
+#OBJ_DIR := obj_cloud3D_noCooling_absorbingBC/
+#OBJ_DIR := obj_multipleClouds_forMontu/
+#OBJ_DIR := obj_CRFront/
+OBJ_DIR := obj_CR_turb_stratified_isothermal/
+#OBJ_DIR := obj_lognormal_tapered_3D_piso/
 OBJ_FILES := $(addprefix $(OBJ_DIR),$(notdir $(SRC_FILES:.cpp=.o)))
 GCOV_FILES := $(notdir $(addsuffix .gcov,$(SRC_FILES)))
 GCDA_FILES := $(wildcard $(OBJ_DIR)/*.gcda)
